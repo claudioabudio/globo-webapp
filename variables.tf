@@ -47,7 +47,15 @@ variable "tfe_workspace_name" {
 
 variable "playbook_repository" {
   type        = string
-  description = "repository that holds ansible playbook"
+  description = "repository that holds ansible plybook"
   default     = "https://github.com/ned1313/ansible-playbook-nginx.git"
 }
 
+variable "ec2_iam_role" {
+  type    = string
+  default = "web_app_dev_api_key_access"
+}
+
+variable "api_key_secret_id" {
+  type = string
+}
