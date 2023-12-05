@@ -25,6 +25,13 @@ locals {
 # RESOURCES
 ##################################################################################
 
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "${local.name_prefix}-webapp"
+  role = var.ec2_iam_role
+  tags = local.common_tags
+}
+
+
 resource "aws_instance" "main" {
   count         = length(data.tfe_outputs.network_config.nonsensitive_values.public_subnets)
   ami           = nonsensitive(data.aws_ssm_parameter.amzn2_linux.value)
@@ -44,33 +51,12 @@ resource "aws_instance" "main" {
 
   user_data_replace_on_change = true
   user_data = templatefile("./templates/userdata.sh", {
-    playbook_repository = var.playbook_repository
+    playbook_repository = var.playbook_repository,
+    secret_id           = var.api_key_secret_id,
+    host_list_ssm_name  = local.host_list_ssm_name,
+    site_name_ssm_name  = local.site_name_ssm_name
   })
-}
-
-resource "terraform_data" "webapp" {
-
-  triggers_replace = [
-    length(aws_instance.main.*.id),
-    join(",", aws_instance.main.*.id)
-  ]
-
-  provisioner "file" {
-    content = templatefile("./templates/application.config.tpl", {
-      hosts     = aws_instance.main.*.private_dns
-      site_name = "${local.name_prefix}-taco-wagon"
-      api_key   = var.api_key
-    })
-    destination = "/home/ec2-user/application.config"
-  }
-
-  connection {
-    type        = "ssh"
-    user        = "ec2-user"
-    port        = "22"
-    host        = aws_instance.main[0].public_ip
-    private_key = module.ssh_keys.private_key_openssh
-  }
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
 }
 
